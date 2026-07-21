@@ -1,0 +1,45 @@
+/* adaptive.css — Dynamic theming engine */
+
+/* Default / neutral */
+body[data-mode="neutral"] {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --accent: #6b9bd1;
+}
+
+/* Profiles applied by intervention-router.js */
+body[data-ui-profile="chunky-muted"] {
+  --bg: #f5f2ed;
+  --fg: #2d2a26;
+  --accent: #d4a373;
+  --btn-min-height: 72px;
+  --font-size-base: 18px;
+  --motion-duration: 0ms;
+  --border-radius: 16px;
+}
+
+body[data-ui-profile="minimal-dark"] {
+  --bg: #1a1a1a;
+  --fg: #e8e8e8;
+  --accent: #6b9bd1;
+  --btn-min-height: 48px;
+  --font-size-base: 16px;
+  --motion-duration: 200ms;
+  --border-radius: 8px;
+}
+
+body[data-ui-profile="soft-pastel"] {
+  --bg: #faf6f1;
+  --fg: #5c5048;
+  --accent: #a3b899;
+  --btn-min-height: 56px;
+  --font-size-base: 17px;
+  --motion-duration: 800ms;
+  --border-radius: 20px;
+}
+
+/* Apply vars immediately */
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+}

@@ -1,0 +1,108 @@
+/* base.css — Reset, tokens, and layout */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --accent: #6b9bd1;
+  --muted: #888888;
+  --danger: #c44536;
+  --success: #5a9;
+  --btn-min-height: 56px;
+  --font-size-base: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 28px;
+  --motion-duration: 200ms;
+  --border-radius: 12px;
+  --max-width: 480px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html {
+  font-size: var(--font-size-base);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.5;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#app {
+  width: 100%;
+  max-width: var(--max-width);
+  padding: 24px 16px calc(24px + var(--safe-bottom));
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen {
+  display: none;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn var(--motion-duration) ease;
+}
+
+.screen.active {
+  display: flex;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+header h1 {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+header .sub {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  min-height: var(--btn-min-height);
+  padding: 12px 20px;
+  border-radius: var(--border-radius);
+  transition: transform var(--motion-duration), opacity var(--motion-duration);
+  touch-action: manipulation;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--fg);
+  border: 2px solid var(--muted);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

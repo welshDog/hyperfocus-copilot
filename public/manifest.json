@@ -1,0 +1,22 @@
+{
+  "name": "Hyperfocus Co-Pilot",
+  "short_name": "Co-Pilot",
+  "description": "A nervous-system layer that adapts to your state.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f2ed",
+  "theme_color": "#f5f2ed",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%23d4a373' width='192' height='192' rx='32'/%3E%3Ctext x='96' y='120' font-size='96' text-anchor='middle'%3E🧠%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect fill='%23d4a373' width='512' height='512' rx='64'/%3E%3Ctext x='256' y='320' font-size='256' text-anchor='middle'%3E🧠%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

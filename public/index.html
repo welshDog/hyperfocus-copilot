@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#f5f2ed">
+  <title>Hyperfocus Co-Pilot</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/adaptive.css">
+  <link rel="stylesheet" href="css/modes.css">
+</head>
+<body data-mode="neutral" data-ui-profile="default">
+  <div id="app">
+    <!-- State Picker Screen -->
+    <section id="state-picker" class="screen active">
+      <header>
+        <h1>How's your brain right now?</h1>
+        <p class="sub">Pick the closest one. No wrong answers.</p>
+      </header>
+      <div class="state-grid">
+        <button class="state-btn" data-state="overwhelmed" aria-label="Overwhelmed">
+          <span class="emoji">🌪️</span>
+          <span class="label">Overwhelmed</span>
+          <span class="hint">Too much at once</span>
+        </button>
+        <button class="state-btn" data-state="frozen" aria-label="Frozen">
+          <span class="emoji">🧊</span>
+          <span class="label">Frozen</span>
+          <span class="hint">Can't start</span>
+        </button>
+        <button class="state-btn" data-state="hyperfocus" aria-label="Hyperfocus">
+          <span class="emoji">🔥</span>
+          <span class="label">Locked In</span>
+          <span class="hint">Deep in it</span>
+        </button>
+        <button class="state-btn" data-state="burnt_out" aria-label="Burnt out">
+          <span class="emoji">😮‍💨</span>
+          <span class="label">Burnt Out</span>
+          <span class="hint">Nothing left</span>
+        </button>
+        <button class="state-btn" data-state="wobbly" aria-label="Wobbly">
+          <span class="emoji">🌤️</span>
+          <span class="label">Okay but Wobbly</span>
+          <span class="hint">Could go either way</span>
+        </button>
+        <button class="state-btn" data-state="sprint_ready" aria-label="Ready to sprint">
+          <span class="emoji">🚀</span>
+          <span class="label">Ready to Sprint</span>
+          <span class="hint">Let's go</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Mode Screen (injected by JS) -->
+    <section id="mode-screen" class="screen">
+      <div id="mode-content"></div>
+    </section>
+
+    <!-- Debrief Screen -->
+    <section id="debrief-screen" class="screen">
+      <header>
+        <h2>Did that help?</h2>
+      </header>
+      <div class="debrief-options">
+        <button class="debrief-btn" data-score="5">👍 Yes</button>
+        <button class="debrief-btn" data-score="3">🤷 Kinda</button>
+        <button class="debrief-btn" data-score="1">👎 No</button>
+      </div>
+      <div class="debrief-followup" hidden>
+        <p>Want to try something different?</p>
+        <button class="retry-btn">Try softer</button>
+        <button class="retry-btn">Try harder</button>
+        <button class="retry-btn">Same again</button>
+      </div>
+    </section>
+
+    <!-- Stuck Detection Overlay -->
+    <div id="stuck-overlay" class="overlay" hidden>
+      <div class="overlay-card">
+        <p class="overlay-msg">You look stuck. Want me to shrink this to two minutes?</p>
+        <div class="overlay-actions">
+          <button id="stuck-yes">Yes, help</button>
+          <button id="stuck-no">Not stuck</button>
+          <button id="stuck-pick">Pick different state</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

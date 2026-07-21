@@ -1,0 +1,116 @@
+/* modes.css — Mode-specific component styles */
+
+/* State Picker */
+.state-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.state-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 2px solid rgba(128,128,128,0.2);
+  min-height: var(--btn-min-height);
+  padding: 16px 12px;
+  transition: border-color var(--motion-duration), background var(--motion-duration);
+}
+
+.state-btn .emoji {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.state-btn .label {
+  font-weight: 600;
+  font-size: calc(var(--font-size-base) * 0.95);
+}
+
+.state-btn .hint {
+  font-size: calc(var(--font-size-base) * 0.8);
+  color: var(--muted);
+}
+
+.state-btn:hover,
+.state-btn:focus {
+  border-color: var(--accent);
+  background: rgba(255,255,255,0.05);
+  outline: none;
+}
+
+/* Overlay */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.overlay[hidden] {
+  display: none;
+}
+
+.overlay-card {
+  background: var(--bg);
+  color: var(--fg);
+  padding: 24px;
+  border-radius: var(--border-radius);
+  max-width: var(--max-width);
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.overlay-msg {
+  font-size: var(--font-size-lg);
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+.overlay-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.overlay-actions button {
+  width: 100%;
+}
+
+/* Debrief */
+.debrief-options {
+  display: flex;
+  gap: 12px;
+}
+
+.debrief-options button {
+  flex: 1;
+  font-size: var(--font-size-lg);
+}
+
+.debrief-followup {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(128,128,128,0.2);
+}
+
+.debrief-followup p {
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+
+.retry-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  background: transparent;
+  color: var(--fg);
+  border: 2px solid var(--muted);
+}
