@@ -65,9 +65,10 @@ class InterventionRouter extends EventTarget {
     const mode = STATE_MODE_MAP[detectedState.label] || 'soft_recovery';
     const config = MODE_CONFIG[mode];
 
-    // Soft recovery hides tasks entirely (PRD: "All tasks hidden" — rest is
-    // the task). Every other mode commits to the top of the list.
-    const task = mode === 'soft_recovery' ? null : taskList.top();
+    // Burnt out hides tasks entirely (PRD: "All tasks hidden" — rest is the
+    // task). Note this keys on the STATE, not the mode: wobbly shares the
+    // soft_recovery mode but the PRD keeps its task list "peekable".
+    const task = detectedState.label === 'burnt_out' ? null : taskList.top();
 
     const plan = {
       mode,

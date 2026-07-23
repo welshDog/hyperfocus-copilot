@@ -46,8 +46,19 @@ The copilot always commits to **one** task: the top of your list.
   what a frozen brain can't do.
 - **Freeze Rescue** shrinks the top task into a micro-step. Tapping *"still too big"*
   escalates to a genuinely smaller step each time, down to "sit and look at the screen".
-- **Focus Sprint** locks the top task in for 25 minutes, then offers to tick it off.
-- **Soft Recovery** hides tasks entirely. Rest is the task.
+- **Focus Sprint** locks the top task in, then offers to tick it off. Length is your
+  call — 15 / 25 / 45 min, and the choice sticks.
+- **Burnt Out** hides tasks entirely. Rest is the task.
+- **Wobbly** keeps the list peekable and offers a 5-minute "test the water" dip —
+  a way back in that doesn't demand a full sprint.
+
+## Ambient sound
+
+Soft Recovery's "play soft sound" is **synthesised in the browser**, not a file:
+filtered brown noise with a slow breathing motion, faded in over ~1.6s. No asset to
+download, works offline, nothing to license, and nothing musical to pattern-match onto
+when you're depleted. It stops when you leave the screen. If the browser has no Web
+Audio, the button says so rather than pretending.
 
 If your list is empty the copy says so — it never claims to have "picked your top task"
 when there isn't one.

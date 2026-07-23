@@ -5,6 +5,7 @@ import { signalEngine } from './engines/signal-detection.js';
 import { interventionRouter } from './engines/intervention-router.js';
 import { memoryEngine } from './engines/memory-recall.js';
 import { taskList } from './engines/task-list.js';
+import { ambientEngine } from './engines/ambient.js';
 
 /* ------------------------------------------------------------------ */
 // Task titles are user input and every render path below goes through
@@ -34,6 +35,10 @@ const stuckOverlay = document.getElementById('stuck-overlay');
 /* ------------------------------------------------------------------ */
 // Navigation helpers
 function showScreen(name) {
+  // Ambient belongs to the recovery screen only — leaving it must not leave
+  // sound running behind your back.
+  if (name !== 'mode') ambientEngine.stop();
+
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
 }
@@ -140,17 +145,41 @@ function renderMode(plan) {
   // Check memory for a better suggestion (keyed on the true state, not the mode)
   const memoryTip = memoryEngine.bestTip({ label: plan.detectedState });
 
+  // Sprint length is the user's call, and the choice sticks.
+  const chosen = preferredSprintMinutes();
+  const lengthPicker = plan.mode === 'focus_sprint'
+    ? `<div class="length-picker" role="group" aria-label="Sprint length">
+         ${SPRINT_CHOICES.map(m => `
+           <button class="length-btn${m === chosen ? ' is-chosen' : ''}"
+                   data-minutes="${m}"
+                   aria-pressed="${m === chosen}">${m} min</button>
+         `).join('')}
+       </div>`
+    : '';
+
   modeContent.innerHTML = `
     <header>
       <h1>${esc(action.headline)}</h1>
       <p class="sub">${esc(action.body)}</p>
       ${memoryTip ? `<p class="memory-tip">💡 ${esc(memoryTip)}</p>` : ''}
     </header>
+    ${lengthPicker}
     <div class="mode-actions">
       <button id="primary-action">${esc(action.cta)}</button>
       <button class="secondary" id="back-to-picker">← Pick different state</button>
     </div>
   `;
+
+  modeContent.querySelectorAll('.length-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      localStorage.setItem(SPRINT_KEY, btn.dataset.minutes);
+      modeContent.querySelectorAll('.length-btn').forEach(b => {
+        const on = b === btn;
+        b.classList.toggle('is-chosen', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    });
+  });
 
   document.getElementById('primary-action').addEventListener('click', () => {
     executeAction(plan);
@@ -202,20 +231,52 @@ function executeAction(plan) {
   }
 
   if (plan.mode === 'soft_recovery') {
+    // "Wobbly" is not "burnt out": the PRD keeps the task list peekable and
+    // offers a 5-minute test-the-water sprint — a way back in that doesn't
+    // demand a full 25.
+    const wobbly = plan.detectedState === 'wobbly';
+
     modeContent.innerHTML = `
       <header>
-        <h1>Rest is the task right now</h1>
-        <p class="sub">Nothing else needed. Breathe. You're allowed to stop.</p>
+        <h1>${wobbly ? 'No pressure either way' : 'Rest is the task right now'}</h1>
+        <p class="sub">${wobbly
+          ? 'You could rest, or dip a toe in for five minutes and stop. Both are fine.'
+          : 'Nothing else needed. Breathe. You\'re allowed to stop.'}</p>
+        ${wobbly && plan.task ? `<span class="task-chip">📌 ${esc(plan.task.title)}</span>` : ''}
       </header>
       <div class="mode-actions">
-        <button id="play-ambient">▶ Play soft sound</button>
+        ${wobbly ? '<button id="test-water">🌤️ Try 5 minutes</button>' : ''}
+        <button ${wobbly ? 'class="secondary"' : ''} id="play-ambient">▶ Play soft sound</button>
         <button class="secondary" id="log-drain">Log what drained you</button>
         <button class="secondary" id="exit-recovery">I'm ready to exit</button>
       </div>
+      <p id="ambient-note" class="task-empty" hidden></p>
     `;
-    document.getElementById('play-ambient').addEventListener('click', () => {
-      speak("Playing ambient sound. Rest now.");
-    });
+
+    const testWater = document.getElementById('test-water');
+    if (testWater) {
+      testWater.addEventListener('click', () => {
+        ambientEngine.stop();
+        startSprint(plan, 5);
+      });
+    }
+
+    const ambientBtn = document.getElementById('play-ambient');
+    const ambientNote = document.getElementById('ambient-note');
+
+    if (!ambientEngine.supported) {
+      // Say so rather than pretending — the fake version of this button is
+      // exactly what we're replacing.
+      ambientBtn.disabled = true;
+      ambientBtn.textContent = 'Soft sound unavailable here';
+      ambientNote.hidden = false;
+      ambientNote.textContent = 'This browser has no Web Audio support.';
+    } else {
+      ambientBtn.addEventListener('click', async () => {
+        const nowPlaying = await ambientEngine.toggle();
+        ambientBtn.textContent = nowPlaying ? '⏸ Stop soft sound' : '▶ Play soft sound';
+      });
+    }
     document.getElementById('log-drain').addEventListener('click', () => {
       modeContent.innerHTML = `
         <header>
@@ -282,11 +343,27 @@ function generateMicroStep(task, tier = 0) {
 
 /* ------------------------------------------------------------------ */
 // Focus Sprint timer (v1: simple countdown)
-function startSprint(plan) {
-  let seconds = 25 * 60;
+// Sprint length is configurable (PRD). An explicit minutes argument wins —
+// that's the 5-minute test-the-water dip; otherwise use the user's saved
+// preference.
+const SPRINT_KEY = 'hfc_sprint_minutes_v1';
+const SPRINT_CHOICES = [15, 25, 45];
+const DEFAULT_SPRINT = 25;
+
+function preferredSprintMinutes() {
+  const saved = parseInt(localStorage.getItem(SPRINT_KEY), 10);
+  return SPRINT_CHOICES.includes(saved) ? saved : DEFAULT_SPRINT;
+}
+
+function startSprint(plan, minutes) {
+  const total = minutes ?? preferredSprintMinutes();
+  let seconds = total * 60;
+  const clock = (secs) =>
+    `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+
   modeContent.innerHTML = `
     <header style="text-align:center;">
-      <div id="timer" style="font-size:64px; font-weight:700; font-variant-numeric:tabular-nums;">25:00</div>
+      <div id="timer" style="font-size:64px; font-weight:700; font-variant-numeric:tabular-nums;">${clock(seconds)}</div>
       <p class="sub">${plan.task ? 'This one thing. I\'ll nudge you at the end.' : 'No task set — just start. I\'ll nudge you at the end.'}</p>
       ${plan.task ? `<span class="task-chip">📌 ${esc(plan.task.title)}</span>` : ''}
     </header>
@@ -298,9 +375,7 @@ function startSprint(plan) {
   const timerEl = document.getElementById('timer');
   const interval = setInterval(() => {
     seconds--;
-    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
-    const s = String(seconds % 60).padStart(2, '0');
-    timerEl.textContent = `${m}:${s}`;
+    timerEl.textContent = clock(seconds);
     if (seconds <= 0) {
       clearInterval(interval);
       speak("Sprint complete. Nice work.");
@@ -362,6 +437,10 @@ function showDebrief(plan, completed) {
   const debriefBtns = document.querySelectorAll('.debrief-btn');
   const followup = document.querySelector('.debrief-followup');
 
+  // Re-hide the follow-up. Without this, one low score leaves "want to try
+  // something different?" stuck on screen for every debrief afterwards.
+  followup.hidden = true;
+
   const handler = (e) => {
     const score = parseInt(e.target.dataset.score, 10);
     memoryEngine.record({
@@ -382,7 +461,12 @@ function showDebrief(plan, completed) {
   };
 
   debriefBtns.forEach(btn => btn.addEventListener('click', handler));
+}
 
+// Retry buttons are wired ONCE at init. Re-binding them inside showDebrief
+// stacked a fresh listener every debrief, so by the fifth session one tap
+// fired five handlers.
+function initDebrief() {
   document.querySelectorAll('.retry-btn').forEach(btn => {
     btn.addEventListener('click', () => showScreen('picker'));
   });
@@ -418,6 +502,7 @@ function showStuckOverlay(state) {
 // Init
 initStatePicker();
 initTaskPanel();
+initDebrief();
 signalEngine.start();
 
 // Log ready

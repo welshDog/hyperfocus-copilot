@@ -234,6 +234,25 @@ button:focus-visible {
   font-size: 0.95em;
 }
 
+/* Sprint length picker */
+.length-picker {
+  display: flex;
+  gap: 8px;
+}
+
+.length-btn {
+  flex: 1;
+  background: transparent;
+  color: var(--fg);
+  border: 2px solid var(--muted);
+}
+
+.length-btn.is-chosen {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
 /* Mode screen: the committed task, shown under the timer / step. */
 .task-chip {
   display: block;
