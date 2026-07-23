@@ -1,4 +1,5 @@
-const CACHE_NAME = 'hfc-v1';
+// Bump CACHE_NAME whenever ASSETS changes — activate() purges old caches.
+const CACHE_NAME = 'hfc-v2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -8,7 +9,8 @@ const ASSETS = [
   '/js/app.js',
   '/js/engines/signal-detection.js',
   '/js/engines/intervention-router.js',
-  '/js/engines/memory-recall.js'
+  '/js/engines/memory-recall.js',
+  '/js/engines/task-list.js'
 ];
 
 self.addEventListener('install', (e) => {

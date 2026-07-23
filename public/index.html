@@ -50,6 +50,29 @@
           <span class="hint">Let's go</span>
         </button>
       </div>
+
+      <!-- Task list — the thing the copilot actually commits to.
+           Collapsed by default so the state picker stays the hero. -->
+      <section id="task-panel">
+        <button id="task-toggle" class="task-toggle secondary"
+                aria-expanded="false" aria-controls="task-body">
+          <span id="task-summary">No tasks yet</span>
+          <span class="chev" aria-hidden="true">▾</span>
+        </button>
+
+        <div id="task-body" hidden>
+          <form id="task-form" autocomplete="off">
+            <label class="visually-hidden" for="task-input">Add a task</label>
+            <input id="task-input" type="text" maxlength="200"
+                   placeholder="One thing you want to get done…">
+            <button type="submit" id="task-add">Add</button>
+          </form>
+          <ul id="task-items"></ul>
+          <p id="task-empty" class="task-empty">
+            Nothing here yet. Add one thing — the copilot will pick the top of this list.
+          </p>
+        </div>
+      </section>
     </section>
 
     <!-- Mode Screen (injected by JS) -->

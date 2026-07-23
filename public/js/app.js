@@ -4,6 +4,16 @@
 import { signalEngine } from './engines/signal-detection.js';
 import { interventionRouter } from './engines/intervention-router.js';
 import { memoryEngine } from './engines/memory-recall.js';
+import { taskList } from './engines/task-list.js';
+
+/* ------------------------------------------------------------------ */
+// Task titles are user input and every render path below goes through
+// innerHTML — escape before interpolating, always.
+function esc(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
 
 /* ------------------------------------------------------------------ */
 // Service Worker (PWA offline support)
@@ -26,6 +36,82 @@ const stuckOverlay = document.getElementById('stuck-overlay');
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
+}
+
+/* ------------------------------------------------------------------ */
+// Task panel — add / promote / complete / delete
+const taskEls = {
+  toggle: document.getElementById('task-toggle'),
+  summary: document.getElementById('task-summary'),
+  body: document.getElementById('task-body'),
+  form: document.getElementById('task-form'),
+  input: document.getElementById('task-input'),
+  items: document.getElementById('task-items'),
+  empty: document.getElementById('task-empty')
+};
+
+function renderTasks() {
+  const all = taskList.all();
+  const active = taskList.active();
+  const top = taskList.top();
+
+  taskEls.summary.textContent = active.length
+    ? `Top task: ${top.title}`
+    : 'No tasks yet';
+
+  taskEls.empty.hidden = all.length > 0;
+
+  taskEls.items.innerHTML = all.map(t => `
+    <li class="task-item ${t.done ? 'is-done' : ''} ${top && t.id === top.id ? 'is-top' : ''}"
+        data-id="${esc(t.id)}">
+      <button class="task-btn" data-act="toggle"
+              aria-label="${t.done ? 'Mark not done' : 'Mark done'}: ${esc(t.title)}">
+        ${t.done ? '✅' : '⬜'}
+      </button>
+      <span class="task-title">${esc(t.title)}</span>
+      ${top && t.id === top.id ? '<span class="task-badge">Top</span>' : ''}
+      ${!t.done && !(top && t.id === top.id)
+        ? `<button class="task-btn" data-act="promote" aria-label="Make this the top task: ${esc(t.title)}">⬆</button>`
+        : ''}
+      <button class="task-btn" data-act="remove" aria-label="Delete: ${esc(t.title)}">✕</button>
+    </li>
+  `).join('');
+}
+
+function initTaskPanel() {
+  taskEls.toggle.addEventListener('click', () => {
+    const open = taskEls.toggle.getAttribute('aria-expanded') === 'true';
+    taskEls.toggle.setAttribute('aria-expanded', String(!open));
+    taskEls.body.hidden = open;
+  });
+
+  taskEls.form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const added = taskList.add(taskEls.input.value);
+    if (added) taskEls.input.value = '';
+    taskEls.input.focus();
+  });
+
+  // Delegated — the list re-renders on every change.
+  taskEls.items.addEventListener('click', (e) => {
+    const btn = e.target.closest('.task-btn');
+    if (!btn) return;
+    const id = btn.closest('.task-item')?.dataset.id;
+    if (!id) return;
+
+    const act = btn.dataset.act;
+    if (act === 'toggle') {
+      const t = taskList.get(id);
+      if (t?.done) taskList.uncomplete(id); else taskList.complete(id);
+    } else if (act === 'promote') {
+      taskList.promote(id);
+    } else if (act === 'remove') {
+      taskList.remove(id);
+    }
+  });
+
+  taskList.addEventListener('tasks-changed', renderTasks);
+  renderTasks();
 }
 
 /* ------------------------------------------------------------------ */
@@ -56,12 +142,12 @@ function renderMode(plan) {
 
   modeContent.innerHTML = `
     <header>
-      <h1>${action.headline}</h1>
-      <p class="sub">${action.body}</p>
-      ${memoryTip ? `<p class="memory-tip">💡 ${memoryTip}</p>` : ''}
+      <h1>${esc(action.headline)}</h1>
+      <p class="sub">${esc(action.body)}</p>
+      ${memoryTip ? `<p class="memory-tip">💡 ${esc(memoryTip)}</p>` : ''}
     </header>
     <div class="mode-actions">
-      <button id="primary-action">${action.cta}</button>
+      <button id="primary-action">${esc(action.cta)}</button>
       <button class="secondary" id="back-to-picker">← Pick different state</button>
     </div>
   `;
@@ -79,23 +165,36 @@ function renderMode(plan) {
 // Execute action inside a mode
 function executeAction(plan) {
   if (plan.mode === 'freeze_rescue') {
-    const step = generateMicroStep();
+    // Escalate through progressively smaller steps each time the user says
+    // "still too big" — v1 regenerated the same size forever, which is the
+    // exact moment a frozen brain gives up.
+    plan._stepTier = Math.min((plan._stepTier ?? 0), MICRO_STEPS.length - 1);
+    const step = generateMicroStep(plan.task, plan._stepTier);
     speak(step);
+    const atSmallest = plan._stepTier >= MICRO_STEPS.length - 1;
+
     modeContent.innerHTML = `
       <header>
         <h1>Your micro-step</h1>
-        <p class="sub" style="font-size:1.2em; margin-top:12px;">${step}</p>
+        <p class="sub" style="font-size:1.2em; margin-top:12px;">${esc(step)}</p>
+        ${plan.task ? `<span class="task-chip">📌 ${esc(plan.task.title)}</span>` : ''}
       </header>
       <div class="mode-actions">
         <button id="done-step">✅ Done</button>
-        <button class="secondary" id="too-big">Still too big</button>
+        ${atSmallest ? '' : '<button class="secondary" id="too-big">Still too big</button>'}
       </div>
     `;
+
     document.getElementById('done-step').addEventListener('click', () => showDebrief(plan, true));
-    document.getElementById('too-big').addEventListener('click', () => {
-      speak("Okay. Let's make it smaller.");
-      executeAction(plan); // regenerate even tinier (v1: same logic)
-    });
+
+    const tooBig = document.getElementById('too-big');
+    if (tooBig) {
+      tooBig.addEventListener('click', () => {
+        speak("Okay. Let's make it smaller.");
+        plan._stepTier = (plan._stepTier ?? 0) + 1;
+        executeAction(plan);
+      });
+    }
   }
 
   if (plan.mode === 'focus_sprint') {
@@ -149,19 +248,36 @@ function executeAction(plan) {
 }
 
 /* ------------------------------------------------------------------ */
-// Micro-step generator (v1: static pool)
+// Micro-step generator
+// Tiers get smaller as the user taps "still too big". Each tier has a
+// task-aware phrasing and a generic fallback for an empty list — the app
+// must never pretend a task exists.
 const MICRO_STEPS = [
-  "Just open the document. That's it. I'll wait.",
-  "Write one sentence. It can be bad. Just one.",
-  "Open the app you need. Don't do anything else yet.",
-  "Find the file. Double-click it. Done.",
-  "Write the title. That's the whole step.",
-  "Set a timer for 2 minutes. Start. Stop whenever.",
-  "Open your notes and read the first line."
+  {
+    withTask: t => `Open whatever you need for "${t}". Nothing else yet.`,
+    generic: "Open the app you need. Don't do anything else yet."
+  },
+  {
+    withTask: t => `Write one bad sentence about "${t}". It can be rubbish.`,
+    generic: 'Write one sentence. It can be bad. Just one.'
+  },
+  {
+    withTask: t => `Set a 2-minute timer and poke at "${t}". Stop whenever.`,
+    generic: 'Set a timer for 2 minutes. Start. Stop whenever.'
+  },
+  {
+    withTask: t => `Just type the words "${t}" somewhere. That's the whole step.`,
+    generic: 'Write the title. That is the whole step.'
+  },
+  {
+    withTask: () => 'Sit down and look at the screen for 30 seconds. No doing.',
+    generic: 'Sit down and look at the screen for 30 seconds. No doing.'
+  }
 ];
 
-function generateMicroStep() {
-  return MICRO_STEPS[Math.floor(Math.random() * MICRO_STEPS.length)];
+function generateMicroStep(task, tier = 0) {
+  const step = MICRO_STEPS[Math.min(tier, MICRO_STEPS.length - 1)];
+  return task ? step.withTask(task.title) : step.generic;
 }
 
 /* ------------------------------------------------------------------ */
@@ -171,7 +287,8 @@ function startSprint(plan) {
   modeContent.innerHTML = `
     <header style="text-align:center;">
       <div id="timer" style="font-size:64px; font-weight:700; font-variant-numeric:tabular-nums;">25:00</div>
-      <p class="sub">One thing. I'll nudge you at the end.</p>
+      <p class="sub">${plan.task ? 'This one thing. I\'ll nudge you at the end.' : 'No task set — just start. I\'ll nudge you at the end.'}</p>
+      ${plan.task ? `<span class="task-chip">📌 ${esc(plan.task.title)}</span>` : ''}
     </header>
     <div class="mode-actions" style="justify-content:center;">
       <button id="cancel-sprint" class="secondary">Cancel</button>
@@ -187,7 +304,7 @@ function startSprint(plan) {
     if (seconds <= 0) {
       clearInterval(interval);
       speak("Sprint complete. Nice work.");
-      showDebrief(plan, true);
+      finishSprint(plan);
     }
   }, 1000);
 
@@ -195,6 +312,31 @@ function startSprint(plan) {
     clearInterval(interval);
     showDebrief(plan, false);
   });
+}
+
+/* ------------------------------------------------------------------ */
+// Sprint end — offer to tick the task off. Closing the loop on the real
+// list is what makes the "locked in" promise mean anything.
+function finishSprint(plan) {
+  if (!plan.task) return showDebrief(plan, true);
+
+  modeContent.innerHTML = `
+    <header>
+      <h1>Sprint complete</h1>
+      <p class="sub">Nice work. Did you finish it?</p>
+      <span class="task-chip">📌 ${esc(plan.task.title)}</span>
+    </header>
+    <div class="mode-actions">
+      <button id="task-done">✅ Mark it done</button>
+      <button class="secondary" id="task-keep">Keep it on the list</button>
+    </div>
+  `;
+
+  document.getElementById('task-done').addEventListener('click', () => {
+    taskList.complete(plan.task.id);
+    showDebrief(plan, true);
+  });
+  document.getElementById('task-keep').addEventListener('click', () => showDebrief(plan, true));
 }
 
 /* ------------------------------------------------------------------ */
@@ -275,6 +417,7 @@ function showStuckOverlay(state) {
 /* ------------------------------------------------------------------ */
 // Init
 initStatePicker();
+initTaskPanel();
 signalEngine.start();
 
 // Log ready

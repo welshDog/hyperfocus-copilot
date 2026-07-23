@@ -2,6 +2,8 @@
 // Intervention Routing Engine — v1
 // Maps detected states to support modes, UI profiles, and actions
 
+import { taskList } from './task-list.js';
+
 const MODE_CONFIG = {
   freeze_rescue: {
     uiProfile: 'chunky-muted',
@@ -63,13 +65,18 @@ class InterventionRouter extends EventTarget {
     const mode = STATE_MODE_MAP[detectedState.label] || 'soft_recovery';
     const config = MODE_CONFIG[mode];
 
+    // Soft recovery hides tasks entirely (PRD: "All tasks hidden" — rest is
+    // the task). Every other mode commits to the top of the list.
+    const task = mode === 'soft_recovery' ? null : taskList.top();
+
     const plan = {
       mode,
       detectedState: detectedState.label, // keep the true state so Memory recalls all 6, not just the 3 modes
       uiProfile: config.uiProfile,
       tone: config.tone,
       cssVars: config.cssVars,
-      suggestedAction: this.pickAction(mode, detectedState),
+      task, // the real task, or null — copy MUST reflect which
+      suggestedAction: this.pickAction(mode, detectedState, task),
       autoTrigger: false // v1: never auto-switch without confirmation
     };
 
@@ -79,19 +86,25 @@ class InterventionRouter extends EventTarget {
     return plan;
   }
 
-  pickAction(mode, state) {
+  pickAction(mode, state, task) {
     // v1: static rules. v2: query memory engine.
+    // Copy is task-aware: never claim a task is "picked" or "locked in" when
+    // the list is empty. An empty list is a normal state, not an error.
     const actions = {
       freeze_rescue: {
         type: 'micro_step',
         headline: 'Just one tiny step',
-        body: 'I\'ve picked your top task and broken it down. Ready?',
-        cta: 'Show me the step'
+        body: task
+          ? `I've picked "${task.title}". Let's shrink it to something absurdly small.`
+          : 'Your list is empty, so there\'s nothing to shrink. Want a starter step instead?',
+        cta: task ? 'Show me the step' : 'Give me a starter step'
       },
       focus_sprint: {
         type: 'sprint_start',
         headline: '25 minutes. One thing.',
-        body: 'Your task is locked in. I\'ll nudge you at the end.',
+        body: task
+          ? `"${task.title}" is locked in. I'll nudge you at the end.`
+          : 'Nothing on your list — add a task first, or just start the clock.',
         cta: 'Start sprint'
       },
       soft_recovery: {

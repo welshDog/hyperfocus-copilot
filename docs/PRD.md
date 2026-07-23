@@ -111,7 +111,8 @@ Return: the intervention used, with a one-line human summary
 - [ ] Momentum Memory storage + basic recall
 - [ ] Debrief screen (Did this help? yes/kinda/no)
 - [ ] PWA shell (offline capable, installable)
-- [ ] One integration: pull tasks from a simple text list / localStorage
+- [x] One integration: pull tasks from a simple text list / localStorage
+      (`js/engines/task-list.js`, key `hfc_tasks_v1`. Supabase `tasks` sync is v2.)
 
 ### Out of Scope (v1)
 - Live body-double rooms (async only)

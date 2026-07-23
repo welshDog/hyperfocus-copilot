@@ -99,6 +99,152 @@ button.secondary {
   border: 2px solid var(--muted);
 }
 
+/* ------------------------------------------------------------------ */
+/* Task panel — collapsed by default; the state picker stays the hero.  */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+#task-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  font-weight: 600;
+}
+
+.task-toggle .chev {
+  transition: transform var(--motion-duration) ease;
+}
+
+.task-toggle[aria-expanded="true"] .chev {
+  transform: rotate(180deg);
+}
+
+#task-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* A `display` rule beats the UA stylesheet's [hidden]{display:none}, so the
+   collapse must be restated explicitly or the panel never closes. */
+#task-body[hidden],
+.task-empty[hidden] {
+  display: none;
+}
+
+#task-form {
+  display: flex;
+  gap: 8px;
+}
+
+#task-input {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--fg);
+  background: transparent;
+  border: 2px solid var(--muted);
+  border-radius: var(--border-radius);
+  padding: 12px 14px;
+  min-height: var(--btn-min-height);
+}
+
+#task-input:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#task-add {
+  flex: 0 0 auto;
+}
+
+#task-items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid var(--muted);
+  border-radius: var(--border-radius);
+}
+
+/* The top active task is what every mode commits to — make that visible. */
+.task-item.is-top {
+  border-color: var(--accent);
+}
+
+.task-item.is-done .task-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.task-title {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-badge {
+  flex: 0 0 auto;
+  font-size: 0.75em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+/* Icon buttons stay large enough to hit with a shaky hand. */
+.task-btn {
+  flex: 0 0 auto;
+  background: transparent;
+  color: var(--fg);
+  border: 2px solid var(--muted);
+  min-height: 44px;
+  min-width: 44px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.task-empty {
+  color: var(--muted);
+  font-size: 0.95em;
+}
+
+/* Mode screen: the committed task, shown under the timer / step. */
+.task-chip {
+  display: block;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 2px dashed var(--muted);
+  border-radius: var(--border-radius);
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -28,13 +28,29 @@ npx serve public
 
 ## V1 scope
 
-- [ ] State picker (6 states)
-- [ ] Freeze Rescue mode (the hero)
-- [ ] Focus Sprint mode
-- [ ] Soft Recovery mode
-- [ ] Adaptive UI (changes with your state)
-- [ ] Momentum Memory (remembers what worked)
-- [ ] Debrief (did this help?)
+- [x] State picker (6 states)
+- [x] Freeze Rescue mode (the hero)
+- [x] Focus Sprint mode
+- [x] Soft Recovery mode
+- [x] Adaptive UI (changes with your state)
+- [x] Momentum Memory (remembers what worked)
+- [x] Debrief (did this help?)
+- [x] Task list (localStorage) — the task the copilot commits to
+
+## The task list
+
+The copilot always commits to **one** task: the top of your list.
+
+- Add tasks on the picker screen (collapsed by default — the state picker stays the hero).
+- `⬆` promotes any task to the top. No drag-and-drop: fiddly targets are exactly
+  what a frozen brain can't do.
+- **Freeze Rescue** shrinks the top task into a micro-step. Tapping *"still too big"*
+  escalates to a genuinely smaller step each time, down to "sit and look at the screen".
+- **Focus Sprint** locks the top task in for 25 minutes, then offers to tick it off.
+- **Soft Recovery** hides tasks entirely. Rest is the task.
+
+If your list is empty the copy says so — it never claims to have "picked your top task"
+when there isn't one.
 
 See `docs/PRD.md` for full spec.
 
