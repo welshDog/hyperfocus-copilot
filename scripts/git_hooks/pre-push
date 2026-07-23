@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# HyperFocus Z0ne -- hyperfocus-copilot pre-push GATE.
+#
+# This repo ships raw ES modules with NO build step, so nothing else stands
+# between a typo and a white screen for a user who is already frozen. The gate
+# parses every module, keeps the service-worker precache honest, and refuses a
+# stale-cache footgun. Local replacement for billing-locked CI.
+#
+# Install:   cp scripts/git_hooks/pre-push .git/hooks/pre-push   (chmod +x on *nix)
+# Override:  git push --no-verify          (emergency only)
+set -u
+
+if command -v python >/dev/null 2>&1; then PY=python; else PY=python3; fi
+
+echo "[copilot-eval] running app gate ..."
+OUT="$("$PY" scripts/validate_app.py 2>&1)"
+CODE=$?
+echo "$OUT"
+
+if [ "$CODE" -ne 0 ]; then
+  echo ""
+  echo "[copilot-eval] PUSH BLOCKED -- problems listed above."
+  echo "[copilot-eval]   Fix them, or override (emergency): git push --no-verify"
+  exit 1
+fi
+
+echo "[copilot-eval] OK -- push proceeding."
+exit 0
