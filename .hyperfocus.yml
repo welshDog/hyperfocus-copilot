@@ -1,0 +1,12 @@
+# HyperFocus Z0ne repo manifest - read by scripts/gen_repo_map.py
+# Edit this file, then re-run the generator. Never hand-edit the map.
+
+name: "hyperfocus-copilot"
+emoji: "🧠"
+tagline: "ND nervous-system co-pilot PWA — pick your state, get the next calm step"
+category: "products"
+stack: "Vanilla JS (PWA) + Supabase"
+first_doc: "README.md"
+tier: "BUILDING"
+url: ""
+notes: "served by agent-hyperfocus-copilot (nginx :3305) from THIS repo's public/ — the Brain vault 07-Co-Pilot/ is dead, don't repopulate. No eval gate yet"
