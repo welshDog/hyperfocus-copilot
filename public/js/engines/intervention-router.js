@@ -65,6 +65,7 @@ class InterventionRouter extends EventTarget {
 
     const plan = {
       mode,
+      detectedState: detectedState.label, // keep the true state so Memory recalls all 6, not just the 3 modes
       uiProfile: config.uiProfile,
       tone: config.tone,
       cssVars: config.cssVars,

@@ -25,8 +25,23 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+// Stale-while-revalidate: serve cache instantly (the app must appear NOW),
+// but always refetch in the background so the next load gets the latest code.
+// Cache-first with a static cache name would freeze users on their first-ever
+// version forever — fatal for an app that ships improvements.
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    caches.open(CACHE_NAME).then(cache =>
+      cache.match(e.request).then(cached => {
+        const network = fetch(e.request)
+          .then(res => {
+            if (res && res.ok) cache.put(e.request, res.clone());
+            return res;
+          })
+          .catch(() => cached);
+        return cached || network;
+      })
+    )
   );
 });

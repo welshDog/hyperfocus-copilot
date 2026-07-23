@@ -51,8 +51,8 @@ interventionRouter.addEventListener('mode-changed', (e) => {
 function renderMode(plan) {
   const action = plan.suggestedAction;
 
-  // Check memory for a better suggestion
-  const memoryTip = memoryEngine.bestTip({ label: plan.mode === 'freeze_rescue' ? 'frozen' : 'sprint_ready' });
+  // Check memory for a better suggestion (keyed on the true state, not the mode)
+  const memoryTip = memoryEngine.bestTip({ label: plan.detectedState });
 
   modeContent.innerHTML = `
     <header>
@@ -116,6 +116,33 @@ function executeAction(plan) {
     `;
     document.getElementById('play-ambient').addEventListener('click', () => {
       speak("Playing ambient sound. Rest now.");
+    });
+    document.getElementById('log-drain').addEventListener('click', () => {
+      modeContent.innerHTML = `
+        <header>
+          <h1>What drained you?</h1>
+          <p class="sub">No pressure. A few words is plenty.</p>
+        </header>
+        <textarea id="drain-note" rows="3" placeholder="e.g. too many tabs, a hard conversation, skipped lunch..."></textarea>
+        <div class="mode-actions">
+          <button id="save-drain">Save it</button>
+          <button class="secondary" id="skip-drain">Skip</button>
+        </div>
+      `;
+      document.getElementById('save-drain').addEventListener('click', () => {
+        const note = document.getElementById('drain-note').value.trim();
+        memoryEngine.record({
+          detectedState: plan.detectedState,
+          mode: plan.mode,
+          intervention: 'drain_log',
+          contextSnapshot: {},
+          outcomeScore: 3,
+          outcomeNote: note
+        });
+        speak("Logged. Now rest.");
+        showDebrief(plan, true);
+      });
+      document.getElementById('skip-drain').addEventListener('click', () => showDebrief(plan, true));
     });
     document.getElementById('exit-recovery').addEventListener('click', () => showDebrief(plan, true));
   }
@@ -196,7 +223,7 @@ function showDebrief(plan, completed) {
   const handler = (e) => {
     const score = parseInt(e.target.dataset.score, 10);
     memoryEngine.record({
-      detectedState: plan.mode === 'freeze_rescue' ? 'frozen' : plan.mode === 'focus_sprint' ? 'sprint_ready' : 'burnt_out',
+      detectedState: plan.detectedState,
       mode: plan.mode,
       intervention: plan.suggestedAction.type,
       contextSnapshot: {},
@@ -220,11 +247,13 @@ function showDebrief(plan, completed) {
 }
 
 /* ------------------------------------------------------------------ */
-// Stuck detection overlay
+// State routing — explicit picks go straight to a mode; passive signals
+// get a gentle confirm overlay first (build trust before assuming control).
 signalEngine.addEventListener('state-detected', (e) => {
   const s = e.detail;
-  // Only react to signal-based detections with gentle confirm
-  if (s.source === 'signal' && s.confidence >= 0.5) {
+  if (s.source === 'explicit') {
+    interventionRouter.route(s);
+  } else if (s.source === 'signal' && s.confidence >= 0.5) {
     showStuckOverlay(s);
   }
 });
