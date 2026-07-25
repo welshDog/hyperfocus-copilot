@@ -370,6 +370,12 @@ function preferredSprintMinutes() {
   return SPRINT_CHOICES.includes(saved) ? saved : DEFAULT_SPRINT;
 }
 
+// Hyperfocus banner needs to reach the currently-running sprint's interval
+// and plan from outside startSprint's own closure, so "Take a break" can
+// reuse #cancel-sprint's exact exit path. null whenever no sprint is running.
+let activeSprintInterval = null;
+let activeSprintPlan = null;
+
 function startSprint(plan, minutes) {
   const total = minutes ?? preferredSprintMinutes();
   plan._lastMinutes = total; // so a debrief retry can adjust relative to what actually ran
@@ -394,13 +400,19 @@ function startSprint(plan, minutes) {
     timerEl.textContent = clock(seconds);
     if (seconds <= 0) {
       clearInterval(interval);
+      activeSprintInterval = null;
+      hyperfocusBanner.hidden = true; // nothing left to nudge a break from
       speak("Sprint complete. Nice work.");
       finishSprint(plan);
     }
   }, 1000);
 
+  activeSprintInterval = interval;
+  activeSprintPlan = plan;
+
   document.getElementById('cancel-sprint').addEventListener('click', () => {
     clearInterval(interval);
+    activeSprintInterval = null;
     showDebrief(plan, false);
   });
 }
@@ -547,6 +559,28 @@ function retryWithIntensity(direction) {
 }
 
 /* ------------------------------------------------------------------ */
+// Hyperfocus banner — non-blocking nudge shown while a running focus_sprint
+// has gone unusually long. Buttons wired ONCE at init (matching
+// initDebrief's fix earlier this session), never rebound per-show, because
+// the banner is a static element (never rebuilt via innerHTML).
+function initHyperfocusBanner() {
+  document.getElementById('hyperfocus-keep-going').addEventListener('click', () => {
+    hyperfocusBanner.hidden = true;
+  });
+
+  document.getElementById('hyperfocus-take-break').addEventListener('click', () => {
+    hyperfocusBanner.hidden = true;
+    if (activeSprintInterval) clearInterval(activeSprintInterval);
+    activeSprintInterval = null;
+    if (activeSprintPlan) showDebrief(activeSprintPlan, false);
+  });
+}
+
+function showHyperfocusBanner() {
+  hyperfocusBanner.hidden = false;
+}
+
+/* ------------------------------------------------------------------ */
 // State routing — explicit picks go straight to a mode; passive signals
 // get a gentle confirm overlay first (build trust before assuming control).
 signalEngine.addEventListener('state-detected', (e) => {
@@ -554,7 +588,11 @@ signalEngine.addEventListener('state-detected', (e) => {
   if (s.source === 'explicit') {
     interventionRouter.route(s);
   } else if (s.source === 'signal' && s.confidence >= 0.5) {
-    showStuckOverlay(s);
+    if (s.label === 'hyperfocus') {
+      showHyperfocusBanner();
+    } else {
+      showStuckOverlay(s);
+    }
   }
 });
 
@@ -602,6 +640,7 @@ function showStuckOverlay(state) {
 initStatePicker();
 initTaskPanel();
 initDebrief();
+initHyperfocusBanner();
 signalEngine.start();
 
 // Log ready
