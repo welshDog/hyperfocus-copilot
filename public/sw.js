@@ -1,5 +1,5 @@
 // Bump CACHE_NAME whenever ASSETS changes — activate() purges old caches.
-const CACHE_NAME = 'hfc-v3';
+const CACHE_NAME = 'hfc-v4';
 const ASSETS = [
   '/',
   '/index.html',
