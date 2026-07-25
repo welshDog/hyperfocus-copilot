@@ -37,14 +37,21 @@ export function classifyEngagement({ activeStreakTicks, activeMode, tabSwitchesT
   return null;
 }
 
-class SignalDetectionEngine extends EventTarget {
+export class SignalDetectionEngine extends EventTarget {
   constructor() {
     super();
     this.lastActivity = Date.now();
     this.tabSwitches = 0;
     this.lastTabSwitch = 0;
+    this.tabSwitchesThisTick = 0;
     this.inactivityTimer = null;
     this.isRunning = false;
+
+    // Active-streak state for sprint_ready / hyperfocus (see classifyEngagement above)
+    this.activeStreakTicks = 0;
+    this.activeMode = null;
+    this.lastHyperfocusFireTick = 0;
+    this.sprintReadyFiredThisStreak = false;
   }
 
   start() {
@@ -57,7 +64,7 @@ class SignalDetectionEngine extends EventTarget {
     window.addEventListener('blur', () => this.handleBlur());
     window.addEventListener('focus', () => this.recordActivity());
 
-    this.inactivityTimer = setInterval(() => this.checkInactivity(), 10_000);
+    this.inactivityTimer = setInterval(() => this._tick(), TICK_MS);
   }
 
   stop() {
@@ -73,16 +80,95 @@ class SignalDetectionEngine extends EventTarget {
     const now = Date.now();
     if (now - this.lastTabSwitch > TAB_SWITCH_DEBOUNCE_MS) {
       this.tabSwitches++;
+      this.tabSwitchesThisTick++;
       this.lastTabSwitch = now;
     }
   }
 
-  checkInactivity() {
+  // Told which mode is active by app.js's showScreen() choke point — kept
+  // decoupled from InterventionRouter so the engine dependency graph stays
+  // one-directional (signal -> router, never the reverse).
+  enterMode(mode) {
+    this.activeMode = mode;
+  }
+
+  clearActiveMode() {
+    this.activeMode = null;
+  }
+
+  // One tick of the poll loop. Shared by the real 10s setInterval and by
+  // simulateTicks() below, so tests can drive hours of "elapsed time"
+  // synchronously instead of waiting on real intervals.
+  _tick() {
     const idle = Date.now() - this.lastActivity;
+
+    this._updateActiveStreak(idle);
+
     if (idle >= INACTIVITY_THRESHOLD_MS) {
       const state = this.inferFromSignals(idle);
       this.dispatchEvent(new CustomEvent('state-detected', { detail: state }));
+    } else {
+      const candidate = classifyEngagement({
+        activeStreakTicks: this.activeStreakTicks,
+        activeMode: this.activeMode,
+        tabSwitchesThisTick: this.tabSwitchesThisTick,
+        lastHyperfocusFireTick: this.lastHyperfocusFireTick
+      });
+
+      if (candidate?.label === 'sprint_ready' && !this.sprintReadyFiredThisStreak) {
+        // Edge-triggered: fires once per continuous streak, not every tick
+        // the threshold stays crossed — without this guard the overlay
+        // would reopen every 10s until the user starts a sprint or goes idle.
+        this.sprintReadyFiredThisStreak = true;
+        this._dispatchEngagement(candidate);
+      } else if (candidate?.label === 'hyperfocus') {
+        this.lastHyperfocusFireTick = this.activeStreakTicks;
+        this._dispatchEngagement(candidate);
+      }
     }
+
+    this.tabSwitchesThisTick = 0;
+  }
+
+  _updateActiveStreak(idle) {
+    const activeThisTick = idle < TICK_MS && this.tabSwitchesThisTick < TAB_SWITCH_DISTRESS_PER_TICK;
+    if (activeThisTick) {
+      this.activeStreakTicks++;
+    } else {
+      // Idle, or distressed this tick — the streak resets, and so does
+      // everything scoped to "this streak".
+      this.activeStreakTicks = 0;
+      this.sprintReadyFiredThisStreak = false;
+      this.lastHyperfocusFireTick = 0;
+    }
+  }
+
+  _dispatchEngagement({ label, confidence }) {
+    const hour = new Date().getHours();
+    const timeOfDay =
+      hour < 12 ? 'morning' :
+      hour < 17 ? 'afternoon' :
+      hour < 21 ? 'evening' : 'night';
+
+    const state = {
+      label,
+      confidence,
+      source: 'signal',
+      timestamp: Date.now(),
+      contextSnapshot: {
+        timeOfDay,
+        sessionDurationMinutes: Math.floor((this.activeStreakTicks * TICK_MS) / 60_000),
+        lastMode: localStorage.getItem('lastMode') || 'unknown',
+        consecutiveFrozenChecks: 0
+      }
+    };
+    this.dispatchEvent(new CustomEvent('state-detected', { detail: state }));
+  }
+
+  // Test-only: runs n ticks synchronously instead of waiting on real 10s
+  // intervals. See the design spec's testing plan.
+  simulateTicks(n) {
+    for (let i = 0; i < n; i++) this._tick();
   }
 
   inferFromSignals(idleMs) {
