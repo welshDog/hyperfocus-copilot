@@ -79,7 +79,11 @@ test('at hyperfocus threshold in a sprint fires hyperfocus', () => {
 });
 
 test('hyperfocus threshold crossed but not in a sprint returns null', () => {
-  const r = classifyEngagement({ activeStreakTicks: 540, activeMode: null, tabSwitchesThisTick: 0, lastHyperfocusFireTick: 0 });
+  // activeMode: 'freeze_rescue', not null — null would also satisfy
+  // sprint_ready's own gate (activeMode === null && ticks >= 24), which
+  // wouldn't isolate what this test claims to check. Use a mode that
+  // satisfies neither gate, same pattern as the test above.
+  const r = classifyEngagement({ activeStreakTicks: 540, activeMode: 'freeze_rescue', tabSwitchesThisTick: 0, lastHyperfocusFireTick: 0 });
   assert.equal(r, null);
 });
 
@@ -1318,3 +1322,5 @@ Expected: the pre-push hook runs `validate_app.py` and prints `[copilot-eval] OK
 - Task 4 Step 5's Playwright script needed `window.signalEngine` to dispatch synthetic events, but the surrounding prose described adding that as an afterthought rather than showing it in the code. Moved the `import()`-and-attach line into the script itself, right after `page.goto`.
 - Task 5 Step 6's script had a dead, self-canceling selector (`'#hyperfocus-take-break:not([hidden])'.replace(':not([hidden])', '')`, which just evaluates to the plain selector) and a comment ("Never fires outside focus_sprint") that didn't describe what the block it sat on top of actually tested. Removed the dead code, fixed the comment.
 - Every Playwright check script was named `.mjs` but written in CommonJS (`require('playwright')`) — Node treats `.mjs` as ESM unconditionally regardless of any `package.json`, so `require` would throw immediately. Renamed all four to `.js`, matching this repo's actual working convention from today's session (CommonJS scratch scripts, no `"type": "module"`). Added the missing one-time `npm install playwright` prerequisite to Task 3, which no step had stated before.
+
+**Bug found during Task 1's execution (missed in the original self-review, fixed post-hoc):** Task 1's exact given `classifyEngagement` code and its exact given test 6 contradicted each other — at `activeStreakTicks: 540, activeMode: null`, the given code returns `sprint_ready` (540 ≥ 24 is true), but the given test expected `null`. A task-reviewer subagent caught it when the implementer papered over the contradiction with an undocumented upper-bound cap on `sprint_ready` instead of surfacing it. Resolved (human decision, 2026-07-25): the code stays exactly as spec'd — no upper bound, since one isn't in the design doc and a user active 90+min without ever starting a sprint should still get nudged — and test 6's scenario (not its expected value) was fixed to use `activeMode: 'freeze_rescue'`, matching the isolation pattern the test above it already uses. Both this plan's Task 1 code block and the actual repo files are corrected to match.
