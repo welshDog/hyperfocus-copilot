@@ -40,7 +40,7 @@ test('at hyperfocus threshold in a sprint fires hyperfocus', () => {
 });
 
 test('hyperfocus threshold crossed but not in a sprint returns null', () => {
-  const r = classifyEngagement({ activeStreakTicks: 540, activeMode: null, tabSwitchesThisTick: 0, lastHyperfocusFireTick: 0 });
+  const r = classifyEngagement({ activeStreakTicks: 540, activeMode: 'freeze_rescue', tabSwitchesThisTick: 0, lastHyperfocusFireTick: 0 });
   assert.equal(r, null);
 });
 

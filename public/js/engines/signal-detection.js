@@ -24,7 +24,7 @@ const HYPERFOCUS_REFIRE_TICKS = HYPERFOCUS_REFIRE_MS / TICK_MS;       // 180
 export function classifyEngagement({ activeStreakTicks, activeMode, tabSwitchesThisTick, lastHyperfocusFireTick }) {
   if (tabSwitchesThisTick >= TAB_SWITCH_DISTRESS_PER_TICK) return null;
 
-  if (activeMode === null && activeStreakTicks >= SPRINT_READY_STREAK_TICKS && activeStreakTicks < HYPERFOCUS_STREAK_TICKS) {
+  if (activeMode === null && activeStreakTicks >= SPRINT_READY_STREAK_TICKS) {
     return { label: 'sprint_ready', confidence: 0.55 };
   }
 
