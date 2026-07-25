@@ -401,6 +401,7 @@ function startSprint(plan, minutes) {
     if (seconds <= 0) {
       clearInterval(interval);
       activeSprintInterval = null;
+      activeSprintPlan = null;
       hyperfocusBanner.hidden = true; // nothing left to nudge a break from
       speak("Sprint complete. Nice work.");
       finishSprint(plan);
@@ -413,6 +414,7 @@ function startSprint(plan, minutes) {
   document.getElementById('cancel-sprint').addEventListener('click', () => {
     clearInterval(interval);
     activeSprintInterval = null;
+    activeSprintPlan = null;
     showDebrief(plan, false);
   });
 }
@@ -573,6 +575,7 @@ function initHyperfocusBanner() {
     if (activeSprintInterval) clearInterval(activeSprintInterval);
     activeSprintInterval = null;
     if (activeSprintPlan) showDebrief(activeSprintPlan, false);
+    activeSprintPlan = null;
   });
 }
 
