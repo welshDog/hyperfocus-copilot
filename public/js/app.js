@@ -40,10 +40,19 @@ function showScreen(name, mode) {
   // sound running behind your back.
   if (name !== 'mode') ambientEngine.stop();
 
-  // Same idea for the hyperfocus banner: leaving the mode screen by any
-  // route (cancel, natural finish, back-to-picker, debrief) must not leave
-  // it floating over a screen it no longer applies to.
-  if (name !== 'mode') hyperfocusBanner.hidden = true;
+  // The hyperfocus banner and the sprint it can act on only make sense
+  // while focus_sprint is the active mode. Leaving that context by ANY
+  // route — cancel, back-to-picker, "pick different state", debrief, or
+  // switching straight into a DIFFERENT mode — must tear both down, or
+  // the banner can float over an unrelated screen and "Take a break" can
+  // act on a sprint that isn't the one currently in view.
+  const enteringFocusSprint = name === 'mode' && mode === 'focus_sprint';
+  if (!enteringFocusSprint) {
+    hyperfocusBanner.hidden = true;
+    if (activeSprintInterval) clearInterval(activeSprintInterval);
+    activeSprintInterval = null;
+    activeSprintPlan = null;
+  }
 
   // Told to signalEngine so passive detection knows whether a mode is
   // active, and which one. Kept decoupled from InterventionRouter so the
@@ -574,7 +583,15 @@ function initHyperfocusBanner() {
     hyperfocusBanner.hidden = true;
     if (activeSprintInterval) clearInterval(activeSprintInterval);
     activeSprintInterval = null;
-    if (activeSprintPlan) showDebrief(activeSprintPlan, false);
+    if (activeSprintPlan) {
+      showDebrief(activeSprintPlan, false);
+    } else {
+      // No sprint actually tracked right now (e.g. the banner fired during
+      // the post-finish "did you finish it?" interstitial, where the plan
+      // is already cleared) — there's no plan to debrief, so the honest
+      // fallback is back to the picker rather than a dead click.
+      showScreen('picker');
+    }
     activeSprintPlan = null;
   });
 }

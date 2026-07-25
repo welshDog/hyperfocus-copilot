@@ -84,6 +84,15 @@ test('a real idle period (90s+) resets the active streak', () => {
   assert.equal(e.activeStreakTicks, 0);
 });
 
+test('a 50s gap (under the new 90s window) does not reset the streak', () => {
+  const e = freshEngine();
+  e.simulateTicks(5);
+  assert.equal(e.activeStreakTicks, 5);
+  e.lastActivity = Date.now() - 50_000; // 50s stale — under INACTIVITY_THRESHOLD_MS(90s)
+  e.simulateTicks(1);
+  assert.equal(e.activeStreakTicks, 6); // kept incrementing, did not reset
+});
+
 test('3+ tab-switches in one tick resets the streak (distress override)', () => {
   const e = freshEngine();
   e.simulateTicks(10);

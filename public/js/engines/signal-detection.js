@@ -131,7 +131,10 @@ export class SignalDetectionEngine extends EventTarget {
   }
 
   _updateActiveStreak(idle) {
-    const activeThisTick = idle < TICK_MS && this.tabSwitchesThisTick < TAB_SWITCH_DISTRESS_PER_TICK;
+    // Uses INACTIVITY_THRESHOLD_MS (90s), not TICK_MS (10s) — a 10s pause
+    // is normal reading/thinking, not disengagement. This is the same idle
+    // check that already drives frozen/overwhelmed/burnt_out below.
+    const activeThisTick = idle < INACTIVITY_THRESHOLD_MS && this.tabSwitchesThisTick < TAB_SWITCH_DISTRESS_PER_TICK;
     if (activeThisTick) {
       this.activeStreakTicks++;
     } else {
