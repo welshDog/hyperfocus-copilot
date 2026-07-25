@@ -13,16 +13,20 @@ All v1 functionality routes through three engines. No UI component talks directl
                                 │                         │
                                 ▼                         ▼
                         ┌──────────────────┐     ┌─────────────────┐
-                        │  Mode Renderer   │     │  localStorage   │
-                        │  (DOM updates)   │     │  + Supabase     │
+                        │  app.js render   │     │  localStorage   │
+                        │  fns (DOM)       │     │  (v1 only)      │
                         └──────────────────┘     └─────────────────┘
 ```
 
+> No separate "Mode Renderer" module exists — `renderMode()` / `executeAction()`
+> in `app.js` do this inline. Memory is localStorage-only in v1; Supabase sync
+> is unbuilt (tracked as v2 in the PRD), so nothing is "synced" yet.
+
 ## Event Flow
 
-1. **Passive:** User is idle → `SignalEngine` emits `state-detected` → `InterventionRouter` confirms (v1) or routes → `ModeRenderer` updates DOM.
+1. **Passive:** User is idle → `SignalEngine` emits `state-detected` → `InterventionRouter` confirms (v1) or routes → `app.js` re-renders the mode screen.
 2. **Active:** User taps state → `SignalEngine.reportExplicit()` → same flow.
-3. **Outcome:** User completes/bails → `MemoryEngine.record()` → stored locally + synced.
+3. **Outcome:** User completes/bails → `MemoryEngine.record()` → written to localStorage.
 
 ## Why no framework?
 

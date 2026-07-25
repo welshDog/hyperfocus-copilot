@@ -204,8 +204,8 @@ User selects "Burnt out" or signal predicts depletion
 
 | Layer | Choice | Rationale |
 |-------|--------|-----------|
-| Frontend | Vanilla JS + Web Components | Zero build step for v1, instant load, PWA-friendly |
-| State Management | Custom event bus (`AppBus`) | Lightweight, no dependencies, ADHD-brain simple |
+| Frontend | Vanilla JS, ES modules | Zero build step for v1, instant load, PWA-friendly |
+| State Management | Each engine (`SignalDetectionEngine`, `InterventionRouter`, `TaskListEngine`) `extends EventTarget`; `app.js` wires listeners directly — no shared bus | Lightweight, no dependencies, ADHD-brain simple |
 | Styling | CSS custom properties (theming) + adaptive classes | Mode switches by swapping `data-mode` attribute |
 | Storage | localStorage (offline) + Supabase (sync) | Works without net, syncs when available |
 | TTS | Web Speech API (`speechSynthesis`) | Free, offline, no API keys |
@@ -260,37 +260,37 @@ Key tables:
 
 ## 11. File Structure
 
+> Matches what's actually on disk (last checked 2026-07-25). The original
+> plan below split mode logic, components, and utils into their own
+> directories — in practice all of that stayed inlined in `app.js`
+> alongside the DOM wiring, and no `modes/`, `components/`, or `utils/`
+> directory was ever created. `docs/`, `css/`, `supabase/`, and the
+> `engines/` files (bar `ambient.js`, added later) are accurate as written.
+
 ```
 hyperfocus-copilot/
 ├── docs/
 │   ├── PRD.md                    # This document
-│   └── ARCHITECTURE.md           # Engine internals (after v1)
+│   └── ARCHITECTURE.md           # Engine internals
 ├── public/
-│   ├── index.html                # PWA entry point, state picker
+│   ├── index.html                # PWA entry point, state picker, debrief
 │   ├── manifest.json             # PWA manifest
-│   ├── sw.js                     # Service worker (offline support)
+│   ├── sw.js                     # Service worker (stale-while-revalidate)
 │   ├── css/
 │   │   ├── base.css              # Reset + tokens
 │   │   ├── modes.css             # Mode-specific overrides
 │   │   └── adaptive.css          # Dynamic theming engine
 │   └── js/
-│       ├── app.js                # Entry point, AppBus
-│       ├── engines/
-│       │   ├── signal-detection.js
-│       │   ├── intervention-router.js
-│       │   └── memory-recall.js
-│       ├── modes/
-│       │   ├── freeze-rescue.js
-│       │   ├── focus-sprint.js
-│       │   └── soft-recovery.js
-│       ├── components/
-│       │   ├── state-picker.js
-│       │   ├── debrief-screen.js
-│       │   └── task-list.js
-│       └── utils/
-│           ├── storage.js        # localStorage + Supabase sync
-│           ├── tts.js            # Web Speech API wrapper
-│           └── dom.js            # DOM helpers
+│       ├── app.js                # Entry point + all mode/screen/debrief logic
+│       └── engines/
+│           ├── signal-detection.js     # SignalDetectionEngine
+│           ├── intervention-router.js  # InterventionRouter
+│           ├── memory-recall.js        # MemoryRecallEngine
+│           ├── task-list.js            # TaskListEngine (localStorage `hfc_tasks_v1`)
+│           └── ambient.js              # AmbientEngine (synthesised soft-recovery sound)
+├── scripts/
+│   ├── validate_app.py           # Pre-push gate: syntax/sw/cache/residue
+│   └── git_hooks/pre-push        # Local only — `cp` into `.git/hooks/` after clone
 ├── supabase/
 │   └── migrations/
 │       └── 001_initial_schema.sql
