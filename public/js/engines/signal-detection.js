@@ -5,6 +5,38 @@
 const INACTIVITY_THRESHOLD_MS = 90_000; // 90 seconds; user-configurable in v2
 const TAB_SWITCH_DEBOUNCE_MS = 5_000;
 
+const TICK_MS = 10_000; // matches the poll interval started in start()
+
+// Active-streak thresholds — see
+// docs/superpowers/specs/2026-07-25-sprint-ready-hyperfocus-signal-detection-design.md
+const SPRINT_READY_STREAK_MS = 4 * 60_000;
+const HYPERFOCUS_STREAK_MS = 90 * 60_000;
+const HYPERFOCUS_REFIRE_MS = 30 * 60_000;
+const TAB_SWITCH_DISTRESS_PER_TICK = 3;
+
+const SPRINT_READY_STREAK_TICKS = SPRINT_READY_STREAK_MS / TICK_MS;   // 24
+const HYPERFOCUS_STREAK_TICKS = HYPERFOCUS_STREAK_MS / TICK_MS;       // 540
+const HYPERFOCUS_REFIRE_TICKS = HYPERFOCUS_REFIRE_MS / TICK_MS;       // 180
+
+// Pure decision function: given the current counters, what (if anything)
+// should fire? No DOM, no timers, no class state — testable with synthetic
+// inputs instead of waiting on real thresholds.
+export function classifyEngagement({ activeStreakTicks, activeMode, tabSwitchesThisTick, lastHyperfocusFireTick }) {
+  if (tabSwitchesThisTick >= TAB_SWITCH_DISTRESS_PER_TICK) return null;
+
+  if (activeMode === null && activeStreakTicks >= SPRINT_READY_STREAK_TICKS && activeStreakTicks < HYPERFOCUS_STREAK_TICKS) {
+    return { label: 'sprint_ready', confidence: 0.55 };
+  }
+
+  if (activeMode === 'focus_sprint' && activeStreakTicks >= HYPERFOCUS_STREAK_TICKS) {
+    if (activeStreakTicks - lastHyperfocusFireTick >= HYPERFOCUS_REFIRE_TICKS) {
+      return { label: 'hyperfocus', confidence: 0.6 };
+    }
+  }
+
+  return null;
+}
+
 class SignalDetectionEngine extends EventTarget {
   constructor() {
     super();
