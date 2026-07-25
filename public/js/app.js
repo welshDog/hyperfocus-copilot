@@ -31,13 +31,28 @@ const screens = {
 };
 const modeContent = document.getElementById('mode-content');
 const stuckOverlay = document.getElementById('stuck-overlay');
+const hyperfocusBanner = document.getElementById('hyperfocus-banner');
 
 /* ------------------------------------------------------------------ */
 // Navigation helpers
-function showScreen(name) {
+function showScreen(name, mode) {
   // Ambient belongs to the recovery screen only — leaving it must not leave
   // sound running behind your back.
   if (name !== 'mode') ambientEngine.stop();
+
+  // Same idea for the hyperfocus banner: leaving the mode screen by any
+  // route (cancel, natural finish, back-to-picker, debrief) must not leave
+  // it floating over a screen it no longer applies to.
+  if (name !== 'mode') hyperfocusBanner.hidden = true;
+
+  // Told to signalEngine so passive detection knows whether a mode is
+  // active, and which one. Kept decoupled from InterventionRouter so the
+  // engine dependency graph stays one-directional.
+  if (name === 'mode') {
+    signalEngine.enterMode(mode);
+  } else {
+    signalEngine.clearActiveMode();
+  }
 
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
@@ -136,7 +151,7 @@ interventionRouter.addEventListener('mode-changed', (e) => {
   const plan = e.detail;
   interventionRouter.applyUI(plan);
   renderMode(plan);
-  showScreen('mode');
+  showScreen('mode', plan.mode);
 });
 
 function renderMode(plan) {
@@ -485,7 +500,7 @@ function retryWithIntensity(direction) {
   const plan = lastPlan;
   if (!plan) return showScreen('picker');
 
-  showScreen('mode');
+  showScreen('mode', plan.mode);
 
   if (plan.mode === 'freeze_rescue') {
     if (direction !== 0) {
@@ -543,12 +558,37 @@ signalEngine.addEventListener('state-detected', (e) => {
   }
 });
 
+// Copy for the confirm overlay, by detected label. Everything not listed
+// here falls back to DEFAULT_OVERLAY_COPY — frozen/overwhelmed/burnt_out
+// intentionally share that default (unchanged copy), only sprint_ready
+// needs its own message since it's the opposite mood.
+const DEFAULT_OVERLAY_COPY = {
+  message: 'You look stuck. Want me to shrink this to two minutes?',
+  primaryLabel: 'Yes, help'
+};
+
+const OVERLAY_COPY_OVERRIDES = {
+  sprint_ready: {
+    message: 'You look locked in — want to start a sprint?',
+    primaryLabel: 'Yes, start it'
+  }
+};
+
+function overlayCopyFor(label) {
+  return OVERLAY_COPY_OVERRIDES[label] || DEFAULT_OVERLAY_COPY;
+}
+
 function showStuckOverlay(state) {
   stuckOverlay.hidden = false;
+
+  const copy = overlayCopyFor(state.label);
+  stuckOverlay.querySelector('.overlay-msg').textContent = copy.message;
 
   const yesBtn = document.getElementById('stuck-yes');
   const noBtn = document.getElementById('stuck-no');
   const pickBtn = document.getElementById('stuck-pick');
+
+  yesBtn.textContent = copy.primaryLabel;
 
   const hide = () => { stuckOverlay.hidden = true; };
 
