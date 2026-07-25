@@ -357,6 +357,7 @@ function preferredSprintMinutes() {
 
 function startSprint(plan, minutes) {
   const total = minutes ?? preferredSprintMinutes();
+  plan._lastMinutes = total; // so a debrief retry can adjust relative to what actually ran
   let seconds = total * 60;
   const clock = (secs) =>
     `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
@@ -430,7 +431,10 @@ function speak(text) {
 
 /* ------------------------------------------------------------------ */
 // Debrief
+let lastPlan = null; // so the retry buttons know what to adjust
+
 function showDebrief(plan, completed) {
+  lastPlan = plan;
   showScreen('debrief');
 
   // One-shot debrief listeners
@@ -468,8 +472,63 @@ function showDebrief(plan, completed) {
 // fired five handlers.
 function initDebrief() {
   document.querySelectorAll('.retry-btn').forEach(btn => {
-    btn.addEventListener('click', () => showScreen('picker'));
+    const delta = parseInt(btn.dataset.delta, 10) || 0;
+    btn.addEventListener('click', () => retryWithIntensity(delta));
   });
+}
+
+// "Try softer" / "Try harder" / "Same again" — move along whichever
+// intensity axis the last mode actually has, then jump straight back into
+// it (no re-confirm screen; that's the whole point of a one-tap retry).
+// -1 = softer, 0 = same, +1 = harder.
+function retryWithIntensity(direction) {
+  const plan = lastPlan;
+  if (!plan) return showScreen('picker');
+
+  showScreen('mode');
+
+  if (plan.mode === 'freeze_rescue') {
+    if (direction !== 0) {
+      // MICRO_STEPS is ordered hardest (tier 0) -> easiest (last tier), the
+      // opposite of "difficulty", so invert before applying the direction.
+      const maxTier = MICRO_STEPS.length - 1;
+      const difficulty = maxTier - (plan._stepTier ?? 0);
+      const nextDifficulty = Math.min(Math.max(difficulty + direction, 0), maxTier);
+      plan._stepTier = maxTier - nextDifficulty;
+    }
+    executeAction(plan);
+    return;
+  }
+
+  // A sprint actually ran under this plan if _lastMinutes is set — true for
+  // every focus_sprint plan, AND for wobbly's soft_recovery "test the
+  // water" 5-min dip (startSprint doesn't care what plan.mode says). Key
+  // off that, not plan.mode, or the dip silently retries as plain rest.
+  if (plan._lastMinutes != null) {
+    const current = plan._lastMinutes;
+    if (direction === 0) {
+      startSprint(plan, current);
+      return;
+    }
+    const idx = SPRINT_CHOICES.indexOf(current); // -1 for the 5-min dip
+    if (direction > 0) {
+      startSprint(plan, SPRINT_CHOICES[idx === -1 ? 0 : Math.min(idx + 1, SPRINT_CHOICES.length - 1)]);
+      return;
+    }
+    // softer: step down the real ladder; the 5-min dip is already the
+    // floor, so softer than that is rest, not a shorter timer.
+    if (idx > 0) {
+      startSprint(plan, SPRINT_CHOICES[idx - 1]);
+      return;
+    }
+    executeAction(plan);
+    return;
+  }
+
+  // soft_recovery with no sprint run (plain rest) has no graduated
+  // intensity axis — re-entering the same mode is the honest behaviour
+  // for all three buttons here.
+  executeAction(plan);
 }
 
 /* ------------------------------------------------------------------ */
