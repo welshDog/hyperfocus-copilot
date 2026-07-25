@@ -104,9 +104,20 @@
         <p class="overlay-msg">You look stuck. Want me to shrink this to two minutes?</p>
         <div class="overlay-actions">
           <button id="stuck-yes">Yes, help</button>
-          <button id="stuck-no">Not stuck</button>
+          <button id="stuck-no">Not now</button>
           <button id="stuck-pick">Pick different state</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Hyperfocus Banner — non-blocking, unlike the overlay above. Shown
+         while a running focus_sprint has gone unusually long; the timer
+         keeps running underneath it. -->
+    <div id="hyperfocus-banner" class="banner" hidden>
+      <p class="banner-msg">You've been at this a while — in the zone?</p>
+      <div class="banner-actions">
+        <button id="hyperfocus-keep-going">Keep going</button>
+        <button id="hyperfocus-take-break" class="secondary">Take a break</button>
       </div>
     </div>
   </div>
